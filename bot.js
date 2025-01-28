@@ -33,8 +33,13 @@ const rest = new REST({ version: '9' }).setToken(process.env.TOKEN)
 (async () => {
     try {
         console.log('Iniciando o registro de comandos de barra...')
+
+        const commandsToRegister = [];
+        client.slashCommands.forEach(command => {
+            commandsToRegister.push(command)
+        });
         await rest.put(Routes.applicationGuildCommands(process.env.CLIENT_ID, process.env.GUILD_ID), {
-            body: slashCommandFiles.map(file => require(`./slashCommands/${file}`)),
+            body: commandsToRegister,
         });
         console.log('Comandos de barra registrados com sucesso!');
     } catch (error) {
