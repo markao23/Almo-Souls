@@ -4,3 +4,6 @@ node_modules/
 #depedecias pra funcionar node_modules
 package-lock.json
 package.json
+
+#variaveis de ambiente
+.env
