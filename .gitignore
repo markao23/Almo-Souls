@@ -1,1 +1,6 @@
-.venv/
+# onde tao todas as depedencias 
+node_modules/
+
+#depedecias pra funcionar node_modules
+package-lock.json
+package.json
