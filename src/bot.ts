@@ -2,7 +2,9 @@ import { Client, GatewayIntentBits } from 'discord.js';
 import { helloCommand } from "./commands/hello";
 import * as dotenv from 'dotenv';
 import { readdir, readFile, writeFile } from 'fs/promises';
+import { existsSync, mkdirSync } from 'fs';
 import { join } from 'path'
+import path from 'path'
 
 dotenv.config()
 const client = new Client({
@@ -16,6 +18,17 @@ const client = new Client({
 const prefix = 'b@';
 const dataFilePath = join(__dirname, 'data', 'data.json');
 const commands: { [key: string]: any} = {};
+
+async function ensureDataFileExists() {
+    const dir = path.dirname(dataFilePath)
+    if (!existsSync(dir)) {
+        mkdirSync(dir, { recursive: true }); // Cria o diretório se não existir
+    }
+    if (!existsSync(dataFilePath)) {
+        // Cria o arquivo com conteúdo padrão se não existir
+        await writeFile(dataFilePath, JSON.stringify({ userCommandCounts: {} }, null, 2));
+    }
+}
 
 async function loadCommands() {
     const commandsDir = join(__dirname, 'commands');
@@ -36,6 +49,7 @@ async function loadCommands() {
 }
 
 async function readData() {
+    await ensureDataFileExists()
     try {
         const data = await readFile(dataFilePath, 'utf-8');
         return JSON.parse(data);
