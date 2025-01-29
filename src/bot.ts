@@ -37,7 +37,10 @@ async function loadCommands() {
             for (const file of files) {
                 if (file.startsWith('.ts')) {
                 const command = await import(join(commandsDir, file))
-                commands[command.pingCommand.name] = command.pingCommand;
+                
+                if (command.pingCommand) {
+                    commands[command.pingCommand.name] = command.pingCommand;
+                }
                 if (command.helloCommand) {
                     commands[command.helloCommand.name] = command.helloCommand;
                 }
