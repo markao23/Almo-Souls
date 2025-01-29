@@ -38,10 +38,10 @@ async function loadCommands() {
 async function readData() {
     try {
         const data = await readFile(dataFilePath, 'utf-8');
-        return JSON.parse(data)
+        return JSON.parse(data);
     } catch (error) {
         console.error('Erro ao ler o arquivo de dados:', error);
-        return { userCommandCounts: {}  }
+        return { userCommandCounts: {} }; // Retorne um objeto padrão se houver erro
     }
 }
 
@@ -56,6 +56,9 @@ async function writeData(data: any) {
 async function updateCommandCount(userId: string, commandName: string) {
     const data = await readData()
 
+    if (!data.userCommandCounts) {
+        data.userCommandCounts = {};
+    }
     if (!data.userCommandCounts[userId]) {
         data.userCommandCounts[userId] = {};
     }
@@ -64,14 +67,15 @@ async function updateCommandCount(userId: string, commandName: string) {
     }
 
     data.userCommandCounts[userId][commandName]++;
-    await writeData(data)
+    console.log(`Atualizando contagem: Usuário: ${userId}, Comando: ${commandName}, Contagem: ${data.userCommandCounts[userId][commandName]}`);
+    await writeData(data);
 }
 
 client.once('ready', async () => {
     console.log(`bot Logado ${client.user?.tag}`);
     await loadCommands();
 })
-client.on('messageCreate', (message) => {
+client.on('messageCreate', async (message) => {
     if(message.author.bot) return;
 
     if(!message.content.startsWith(prefix)) return;
@@ -79,8 +83,9 @@ client.on('messageCreate', (message) => {
     const args = message.content.slice(prefix.length).trim().split(/ +/);
     const commandName = args.shift()?.toLowerCase()
     if (commandName === helloCommand.name) {
-        helloCommand.execute(message)
+        await helloCommand.execute(message)
     }
+    await updateCommandCount(message.author.id, helloCommand.name);
     
 })
 client.login(process.env.TOKEN)
