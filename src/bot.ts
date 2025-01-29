@@ -1,7 +1,7 @@
 import { Client, GatewayIntentBits } from 'discord.js';
 import * as dotenv from 'dotenv';
-import { promises as fs } from 'node:fs';
-import path from 'node:path'
+import { readdir, readFile, writeFile } from 'fs/promises';
+import { join } from 'path'
 
 dotenv.config()
 const client = new Client({
@@ -13,27 +13,30 @@ const client = new Client({
     ]
 });
 const prefix = 'b@';
-const dataFilePath = path.join(__dirname, 'data', 'data.json');
+const dataFilePath = join(__dirname, 'data', 'data.json');
 const commands: { [key: string]: any} = {};
 
 async function loadCommands() {
-    const commandsDir = path.join(__dirname, 'commands');
-    const files = await fs.readdir(commandsDir);
-
-    for (const file of files) {
-        if (file.startsWith('.ts')) {
-            const command = await import(path.join(commandsDir, file))
-            commands[command.pingCommand.name] = command.pingCommand;
-            if (command.helloCommand) {
-                commands[command.helloCommand.name] = command.helloCommand;
+    const commandsDir = join(__dirname, 'commands');
+    const files = await readdir(commandsDir);
+        try{
+            for (const file of files) {
+                if (file.startsWith('.ts')) {
+                const command = await import(join(commandsDir, file))
+                commands[command.pingCommand.name] = command.pingCommand;
+                if (command.helloCommand) {
+                    commands[command.helloCommand.name] = command.helloCommand;
+                }
             }
         }
+    } catch (error) {
+        console.error('Erro ao carregar comandos:', error);
     }
 }
 
 async function readData() {
     try {
-        const data = await fs.readFile(dataFilePath, 'utf-8');
+        const data = await readFile(dataFilePath, 'utf-8');
         return JSON.parse(data)
     } catch (error) {
         console.error('Erro ao ler o arquivo de dados:', error);
@@ -43,7 +46,7 @@ async function readData() {
 
 async function writeData(data: any) {
     try {
-       await fs.writeFile(dataFilePath, JSON.stringify(data, null, 2))
+       await writeFile(dataFilePath, JSON.stringify(data, null, 2))
     } catch (error) {
         console.error('Erro ao escrever no arquivo de dados:', error);
     }
