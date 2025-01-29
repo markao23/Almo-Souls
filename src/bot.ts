@@ -1,4 +1,5 @@
 import { Client, GatewayIntentBits } from 'discord.js';
+import { helloCommand } from "./commands/hello";
 import * as dotenv from 'dotenv';
 import { readdir, readFile, writeFile } from 'fs/promises';
 import { join } from 'path'
@@ -70,17 +71,15 @@ client.once('ready', async () => {
     console.log(`bot Logado ${client.user?.tag}`);
     await loadCommands();
 })
-client.on('messageCreate', async (message) => {
+client.on('messageCreate', (message) => {
     if(message.author.bot) return;
 
     if(!message.content.startsWith(prefix)) return;
 
-    const commandName = message.content.slice(prefix.length).trim();
-
-    const command = commands[commandName]
-    if (command) {
-        await command.execute(message)
-        await updateCommandCount(message.author.id, commandName)
+    const args = message.content.slice(prefix.length).trim().split(/ +/);
+    const commandName = args.shift()?.toLowerCase()
+    if (commandName === helloCommand.name) {
+        helloCommand.execute(message)
     }
     
 })
