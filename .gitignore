@@ -11,3 +11,6 @@ dist/
 
 # arquivo de config do typescript
 tsconfig.json
+
+#arquivo so pra amasenar os dados 
+data.json
