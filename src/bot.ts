@@ -6,6 +6,7 @@ import { join } from 'path'
 import { REST } from "@discordjs/rest";
 import { Routes } from "discord-api-types/v9";
 import path from 'path'
+import { log } from 'console';
 
 dotenv.config()
 const client = new Client({
@@ -78,6 +79,7 @@ async function readData() {
 }
 
 async function writeData(data: any) {
+
     try {
        await writeFile(dataFilePath, JSON.stringify(data, null, 2))
     } catch (error) {
@@ -91,15 +93,16 @@ async function updateCommandCount(user: User, commandName: string) {
     if (!data.userCommandCounts) {
         data.userCommandCounts = {};
     }
-    if (!data.userCommandCounts[user.id]) {
-        data.userCommandCounts[user.id] = {};
+    if (!data.userCommandCounts[user.username]) {
+        data.userCommandCounts[user.username] = {};
     }
-    if (!data.userCommandCounts[user.id][commandName]) {
-        data.userCommandCounts[user.id][commandName] = 0;
+    if (!data.userCommandCounts[user.username][commandName]) {
+        data.userCommandCounts[user.username][commandName] = 0;
     }
+    
 
-    data.userCommandCounts[user.id][commandName]++;
-    console.log(`Atualizando contagem: Usuário: ${user.username}, Comando: ${commandName}, Contagem: ${data.userCommandCounts[user.id][commandName]}`);
+    data.userCommandCounts[user.username][commandName]++
+    console.log(`Atualizando contagem: Usuário: ${user.username}, Comando: ${commandName}, Contagem: ${data.userCommandCounts[user.username][commandName]}`);
     await writeData(data);
 }
 
@@ -110,6 +113,14 @@ client.once(Events.ClientReady, async () => {
 (async () => {
    await registerCommands(commands)
 })();
+client.on('interactionCreate', async (interaction: any) => {
+
+    const command = commands.get(interaction.commandName!)
+    if (command) {
+        await command.execute(interaction)
+        // await updateCommandCount(message.author, command.name);
+    }
+})
 client.on('messageCreate', async (message) => {
     if(message.author.bot) return;
 
@@ -123,5 +134,4 @@ client.on('messageCreate', async (message) => {
         await updateCommandCount(message.author, command.name);
     }
 })
-
 client.login(process.env.TOKEN);
