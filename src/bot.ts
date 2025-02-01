@@ -1,5 +1,4 @@
 import { Client, GatewayIntentBits, Events, Collection, User } from 'discord.js';
-import { pathToFileURL } from "url";
 import * as dotenv from 'dotenv';
 import { readdir, readFile, writeFile } from 'fs/promises';
 import { existsSync, mkdirSync } from 'fs';
