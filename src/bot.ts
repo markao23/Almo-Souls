@@ -1,9 +1,11 @@
-import { Client, GatewayIntentBits } from 'discord.js';
-import { helloCommand } from "./commands/hello";
+import { Client, GatewayIntentBits, Events, Collection, User } from 'discord.js';
+import { pathToFileURL } from "url";
 import * as dotenv from 'dotenv';
 import { readdir, readFile, writeFile } from 'fs/promises';
 import { existsSync, mkdirSync } from 'fs';
 import { join } from 'path'
+import { REST } from "@discordjs/rest";
+import { Routes } from "discord-api-types/v9";
 import path from 'path'
 
 dotenv.config()
@@ -15,9 +17,9 @@ const client = new Client({
         GatewayIntentBits.GuildPresences
     ]
 });
-const prefix = 'b@';
+
 const dataFilePath = join(__dirname, 'data', 'data.json');
-const commands: { [key: string]: any} = {};
+const commands = new Collection<string, any>();
 
 async function ensureDataFileExists() {
     const dir = path.dirname(dataFilePath)
@@ -31,23 +33,37 @@ async function ensureDataFileExists() {
 }
 
 async function loadCommands() {
-    const commandsDir = join(__dirname, 'commands');
-    const files = await readdir(commandsDir);
-        try{
+    const commandsDirs = [join(__dirname, 'commands'), join(__dirname, 'slashcommands')];
+    try {
+        for (const commandsDir of commandsDirs) {
+            const files = await readdir(commandsDir);
             for (const file of files) {
-                if (file.startsWith('.ts')) {
-                const command = await import(join(commandsDir, file))
-                
-                if (command.pingCommand) {
-                    commands[command.pingCommand.name] = command.pingCommand;
-                }
-                if (command.helloCommand) {
-                    commands[command.helloCommand.name] = command.helloCommand;
+                if (file.endsWith('.ts') || file.endsWith('.js')) {
+                    const commandModule = await import(join(commandsDir, file));
+                    const command = commandModule.default || commandModule
+                    commands.set(command.name, command)
                 }
             }
         }
     } catch (error) {
         console.error('Erro ao carregar comandos:', error);
+    }
+}
+
+async function registerCommands(commands: { [key: string]: any }) {
+    const clientId = process.env.CLIENT_ID!
+    const guildId = process.env.GUILD_ID!
+    const token = process.env.TOKEN!
+    const rest = new REST({ version: '9' }).setToken(token);
+
+    try {
+        console.log('Iniciando o registro de comandos de barra...');
+        await rest.put(Routes.applicationGuildCommands(clientId, guildId), {
+            body: commands,
+        });
+        console.log('Comandos registrados com sucesso!');
+    } catch (error) {
+        console.error('Erro ao registrar comandos:', error);
     }
 }
 
@@ -70,39 +86,43 @@ async function writeData(data: any) {
     }
 }
 
-async function updateCommandCount(userId: string, commandName: string) {
+async function updateCommandCount(user: User, commandName: string) {
     const data = await readData()
 
     if (!data.userCommandCounts) {
         data.userCommandCounts = {};
     }
-    if (!data.userCommandCounts[userId]) {
-        data.userCommandCounts[userId] = {};
+    if (!data.userCommandCounts[user.id]) {
+        data.userCommandCounts[user.id] = {};
     }
-    if (!data.userCommandCounts[userId][commandName]) {
-        data.userCommandCounts[userId][commandName] = 0;
+    if (!data.userCommandCounts[user.id][commandName]) {
+        data.userCommandCounts[user.id][commandName] = 0;
     }
 
-    data.userCommandCounts[userId][commandName]++;
-    console.log(`Atualizando contagem: Usuário: ${userId}, Comando: ${commandName}, Contagem: ${data.userCommandCounts[userId][commandName]}`);
+    data.userCommandCounts[user.id][commandName]++;
+    console.log(`Atualizando contagem: Usuário: ${user.username}, Comando: ${commandName}, Contagem: ${data.userCommandCounts[user.id][commandName]}`);
     await writeData(data);
 }
 
-client.once('ready', async () => {
+client.once(Events.ClientReady, async () => {
     console.log(`bot Logado ${client.user?.tag}`);
     await loadCommands();
-})
+});
+(async () => {
+   await registerCommands(commands)
+})();
 client.on('messageCreate', async (message) => {
     if(message.author.bot) return;
 
-    if(!message.content.startsWith(prefix)) return;
+    if(!message.content.startsWith(process.env.PREFIX!)) return;
 
-    const args = message.content.slice(prefix.length).trim().split(/ +/);
+    const args = message.content.slice(process.env.PREFIX?.length).trim().split(/ +/);
     const commandName = args.shift()?.toLowerCase()
-    if (commandName === helloCommand.name) {
-        await helloCommand.execute(message)
+    const command = commands.get(commandName!)
+    if (command) {
+        await command.execute(message)
+        await updateCommandCount(message.author, command.name);
     }
-    await updateCommandCount(message.author.id, helloCommand.name);
-    
 })
-client.login(process.env.TOKEN)
+
+client.login(process.env.TOKEN);
